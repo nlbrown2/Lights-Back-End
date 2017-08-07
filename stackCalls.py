@@ -1,4 +1,5 @@
 from collections import deque
+from lightShows import startShow
 
 def acceptRequest(request):
     if type(request) != type('string'):
@@ -23,6 +24,12 @@ class RequestStack:
             return self.stack.popleft()
         else:
             return ''
+
+    def getIndex(self, show):
+        try:
+            return self.stack.index(show)
+        except:
+            return -1
 
     def currentLength(self):
         return len(self.stack)
