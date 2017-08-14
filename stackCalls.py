@@ -8,26 +8,35 @@ def acceptRequest(request):
     else:
         #call chris's function here
         print("Recieved this request: ", request)
+        # startShow(request)
 
 class RequestStack:
     def __init__(self):
         self.stack = deque()
+        self.show_names = deque()
 
-    def add(self, request):
-        if(type(request) != type('test')):
-            print(type(request))
-            raise TypeError("Bad Request: ", request)
+    def print(self):
+        response = ''
+        for x in self.shows:
+            response += x
+        return response
+
+    def add(self, request, request_name):
+        if(type(request) != type('String')):
+            print('Error in adding', request, 'as it is not a string')
         self.stack.append(request)
+        self.show_names.append(request_name)
 
-    def getNext(self):
+    def getNextRequest(self):
         if(len(self.stack)):
+            self.show_names.popleft()
             return self.stack.popleft()
         else:
             return ''
 
     def getIndex(self, show):
         try:
-            return self.stack.index(show)
+            return self.show_names.index(show)
         except:
             return -1
 

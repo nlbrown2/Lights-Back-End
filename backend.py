@@ -6,34 +6,162 @@ import json
 # Define globals
 # Shows should be a list of dictionaries with name, description, and queue keys
 ShowNames = ['Hue Show', 'Snake', 'Tic Tak Toe']
-ShowDescriptions = {
-        'Hue Show': 'First, every LED is the same color and they slowly change through the hues. The options for this segement are wait 1 and speed 1. Wait 1 is how much time is spent before transitioning to the next color. speed 1 is how much time is spent for this whole portion of the show. Next, each LED will display the color spectrum in succession. The options for this segment are wait 2 and speed 2. Wait 2 is how much time (in seconds) is waited before the next LED is lit. Speed 2 is how how drastic the color difference between each LED is. The third segement is where each LED is lit after the other, but all the colors are random. The options for this segments are wait 3 and speed 3. Wait 3 determines how much time is spent between each pixel being lit and the speed 3 determines how much difference between each possible color is. Finall, the 4th segment is random colors and positions. The options for this are wait 4, which determines the time between pixel shifts and speed 4, which determines the variety of colors available.',
-        'Snake': 'The computer plays the lovable game of snake',
-        'Tic Tak Toe': 'The computer plays tic tak toe!'
+LongShowDescriptions = {
+        'Hue Show': 'This program has four parts that are customizable to run at different speeds. Part 1: simultaneous_hue_shift. All LEDs light at the same time to the same color. Color iterates through RGB spectrum. Part 2: serialized_hue_shift. Rather than all LEDs displaying the same color, each successive LED in the chain will display the next color in the spectrum. Each LED iterates through, making a rippling effect. Part 3: non_serialized_hue_shift. The LEDs change in successive order, so the colors still appear to move along the strand, but each successive color is random. Like the lights on the trim of a movie theater. Part 4: random_light_display. Each color and each placement of the color is random. Precursor to rave.py.',
+        'Snake': 'This program plays the classic game of snake, but adds a few elements. The snake moves itself automatically around a grid. It looks for nom_noms which make it longer. There is a weighting system implemented to help the snake decide where to move based on the proximity of nom_noms. Though it can see nom_noms and navigate towards them, it cannot see bombs, which make it shorter. When a nom_nom or bomb is hit, the appropriate effect is applied and the item respawns somewhere else on the board. There are also caffeine pills which make the snake move faster, though this is only for visual effect. When a bomb, nom_nom, or caffeine pill is hit, the non-programmable lights will flash. If the snake gets caught in a loop, it will execute a random move to escape the loop. In text output, each node of the snake is numbered, with 1 being the head. 44 represents a bomb, 55 a caffeine pill, and 99 a nom_nom.',
+        'Tic Tak Toe': 'Long description for Tic Tak Toe'
         }
-showString = ''
-def getShowDescription(showName):
+ShortShowDescriptions = {
+        'Hue Show': 'A visually stunning performance that demonstrates the capabilities of the lights. This program runs four sub-programs that ripple colors across the lights with varying degrees of order.',
+        'Snake': 'This program plays the classic game of snake, but adds a few elements. The snake moves itself automatically around a grid. It actively looks for nom_noms which make it longer. It can hit hidden landmines that decrease its length. Caffeine pills will make it move rapidly.',
+        'Tic Tak Toe': 'Short descriptions for Tic Tak Toe.'
+        }
+
+ShowOptions = {
+        'Hue Show': {
+            'wait1': {
+                'type': 'Float',
+                'default': 0,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'This is the time in seconds between each change of color for the first segment. In reality, 0 is not actually 0 seconds.'
+                },
+            'speed1': {
+                'type': 'Float',
+                'default': 1.75,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Determines how gradual the change is between each color for the first segment. 2 means you see every color, 3 means you see every third color, etc.'
+                },
+            'wait2': {
+                'type': 'Integer',
+                'default': 0,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as wait1 for the second segment'
+                },
+            'speed2': {
+                'type': 'Float',
+                'default': 1.75,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as speed1 for the second segment'
+                },
+            'wait3': {
+                'type': 'Integer',
+                'default': 0,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as wait1 for the third segment'
+                },
+            'speed3': {
+                'type': 'Float',
+                'default': 1.75,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as speed1 for the third segment'
+                },
+            'wait4': {
+                'type': 'Integer',
+                'default': 0,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as wait1 for the fourth segment'
+                },
+            'speed4': {
+                'type': 'Float',
+                'default': 1.75,
+                'lowerBound': 0,
+                'upperBound': 5,
+                'description': 'Same as speed1 for the fourth segment'
+                },
+            },
+        'Snake': {
+                'Sleep_tme': {
+                    'type': 'Float',
+                    'default': 0.5,
+                    'lowerBound': 0,
+                    'upperBound': 2,
+                    'description': 'The amount of time between each movement of the snake. Lower number equals faster snake.'
+                    },
+                'Wait_times': {
+                    'type': 'List of Floats',
+                    'default': '[0.05, 0.05, 0.05, 0.05, 0.05, 0.1, 0.15, 0.2, 0.2]',
+                    'lowerBound': 0,
+                    'upperBound': 'Sleep_tme',
+                    'description': 'The sleep times for the moves following the snake hitting a caffeine pill. The default make the moves very fast for five moves then slows down over the next four.'
+                    },
+                'Number_of_nom_noms': {
+                    'type': 'Integer',
+                    'default': 2,
+                    'lowerBound': 1,
+                    'upperBound': 10,
+                    'description': 'The number of nom_noms on the board at any given time. In practice, lower numbers are better to avoid quick games.'
+                    },
+                'Number_of_caffeine_pills': { 
+                    'type': 'Integer',
+                    'lowerBound': 0,
+                    'upperBound': 10,
+                    'default': 5,
+                    'description': 'The number of caffeine pills on the board at any given time.'
+                    },
+                'Level_0_nom_nom': {
+                    'type': 'Integer',
+                    'lowerBound': 3,
+                    'upperBound': 20,
+                    'default': 10,
+                    'description': 'The weighting placed on a level_o_nom_nom, which is classified as a nom_nom that is adjacent to the head of the snake. Higher values make the snake more likely to turn towards the nom_nom.'
+                    },
+                'Level_1_nom_nom': {
+                    'type': 'Integer',
+                    'lowerBound': 2,
+                    'upperBound': 'Level_0_nom_nom',
+                    'default': 7,
+                    'description': 'Same as Level_0_nom_nom but applies to nom_noms that are exactly 2 moves away from the head.'
+                    },
+                'Level_2_nom_nom': {
+                    'type': 'Integer',
+                    'lowerBound': 1,
+                    'upperBound': 'Level_1_nom_nom',
+                    'default': 4,
+                    'description': 'Same as Level_0_nom_nom but applies to nom_noms that are exactly 3 moves away from the head.'
+                    },
+                'Display_on_lights_boolean':{ 
+                    'type': 'Boolean',
+                    'default': True,
+                    'lowerBound': False,
+                    'upperBound': True,
+                    'description': 'Determines whether the program is displayed on the lights. If false, only text output is displayed on the screen.'
+                    }
+                }
+        }
+def getShowOptions(showName):
     try:
-        return ShowDescriptions[showName]
+        return ShowOptions[showName]
+    except:
+        return 'no options'
+
+def getShortShowDescription(showName):
+    try:
+        return ShortShowDescriptions[showName]
     except:
         return 'no description'
 
-Shows = []
-for show in ShowNames:
-    showDict = {
-            'name': show,
-            'description': getShowDescription(show),
-            'position': -1
-            }
-    Shows.append(showDict)
+def getLongShowDescription(showName):
+    try:
+        return LongShowDescriptions[showName]
+    except:
+        return 'no description'
 
 def publishShows(mqtt):
     Shows = []
     for show in ShowNames:
         showDict = {
             'name': show,
-            'description': getShowDescription(show),
-            'position': stack.getIndex(show)
+            'short_description': getShortShowDescription(show),
+            'long_description': getLongShowDescription(show),
+            'position': stack.getIndex(show),
+            'options': getShowOptions(show)
             }
         Shows.append(showDict)
     mqtt.publish( "/options", json.dumps(Shows))
@@ -54,11 +182,26 @@ def on_message(mosq, obj, msg):
     print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
     if(msg.topic == "/request"):
         try:
-            stack.add(str(msg.payload, 'utf-8'))
-        except ex as Exception:
+            request_string = str(msg.payload, 'utf-8')
+            print(request_string)
+            request_dict = json.loads(str(request_string).strip("'<>() ").replace('\'', '\"'))
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
         finally:
             print(stack.currentLength())
+            print(request_dict, 'request dictionary')
+            print('options' in request_dict)
+            if 'options' in request_dict:
+                for option in request_dict['options']:
+                    if(option != 'no options'):
+                        try:
+                            request_dict['options'][option] = json.loads(request_dict['options'][option])
+                        except Exception as ex:
+                            print('error reading JSON from', request_dict['options'][option], ex)
+            request_name = request_dict['name']
+        except Exception as ex:
+            print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
+        finally:
+            print(request_dict)
     if(msg.topic == "/get"):
         if(str(msg.payload == "show list")):
             publishShows(mosq)
@@ -94,7 +237,7 @@ client.loop_start()
 #This puts the client's publish and subscribe into a different thread, so any blocking work done here won't matter
 
 client.subscribe("/request", 2)
-
+client.subscribe("/get", 2)
 run = True
 stack = RequestStack()
 while run:
