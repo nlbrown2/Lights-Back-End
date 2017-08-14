@@ -135,6 +135,95 @@ ShowOptions = {
                     }
                 }
         }
+def valid_option(user_input, option_info_dict, user_options):
+    print(user_input, option_info_dict)
+    print(type(user_input))
+    correct_type = option_info_dict['type']
+    if correct_type == 'Float':
+        try:
+            user_input = float(user_input)
+            return user_input > option_info_dict['lowerBound'] and user_input < option_info_dict['upperBound']
+        except Exception as e:
+            print(e)
+            return False
+    if correct_type == 'Integer':
+        try:
+            user_input = int(user_input)
+            return withinBounds(user_input, option_info_dict, user_options)
+        except Exception as e:
+            print(e)
+            return False
+    if correct_type == 'Boolean':
+        print('Boolean', user_input, type(user_input))
+        if type(user_input) == type(True):
+            return True
+        if user_input != 'True' and user_input != 'False':
+            return False
+        else:
+            return True
+    if correct_type == 'List of Floats':
+        try:
+            if(not(isinstance(user_input, list))):
+                return False
+            else:
+                try:
+                    for item in user_input:
+                        item = float(item)
+                except Exception as e:
+                    return False
+            return True
+        except Exception as e:
+            print(e)
+            return False
+    else:
+        return False
+
+def withinBounds(userVal, option_info_dict, user_options):
+    try:
+        if type(option_info_dict['upperBound']) == type(''):
+            #This means the upper bound is another option
+            if option_info_dict['upperBound'] in user_options:
+                other_option = user_options[option_info_dict['upperBound']]
+            else:
+                other_option = option_info_dict[option_info_dict['upperBound']]
+            if userVal > other_option:
+                return False
+        else:
+            if userVal > option_info_dict['upperBound']:
+                return False
+        if type(option_info_dict['lowerBound']) == type(''):
+            #lower bound is another option
+            if option_info_dict['lowerBound'] in user_options:
+                other_option = user_options[option_info_dict['lowerBound']]
+            else:
+                other_option = option_info_dict[option_info_dict['lowerBound']]
+            if userVal < other_option:
+                return False
+        else:
+            if userVal < option_info_dict['lowerBound']:
+                return False
+        print('within bounds')
+        return True
+    except Exception as e:
+        print('error checking bounds', e)
+
+
+def validOptions(show_dict):
+    valid_option_dict = ShowOptions[show_dict['name']]
+    user_options = show_dict['options']
+    for option in user_options:
+        print(option, type(option))
+        if option in valid_option_dict:
+            print('found option', option)
+            print(valid_option_dict[option])
+            if not(valid_option(user_options[option], valid_option_dict[option], user_options)):
+                print('invalid option', option)
+                return False
+        else:
+            print('not an option', option)
+            return False
+    return True
+
 def getShowOptions(showName):
     try:
         return ShowOptions[showName]
@@ -198,6 +287,14 @@ def on_message(mosq, obj, msg):
                         except Exception as ex:
                             print('error reading JSON from', request_dict['options'][option], ex)
             request_name = request_dict['name']
+            if 'options' in request_dict:
+                if validOptions(request_dict):
+                    # stack.add(request_dict, request_name)
+                    print('valid options')
+                    print(request_dict, type(request_dict['options']))
+            else:
+                print('no options')
+                # stack.add(request_dict, request_name)
         except Exception as ex:
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
         finally:
