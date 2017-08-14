@@ -2,6 +2,11 @@ import paho.mqtt.client as mqtt , os, urllib.parse
 import time
 from stackCalls import RequestStack, acceptRequest
 import json
+import firebase_admin
+from firebase_admin import credentials, auth
+
+cred = credentials.Certificate('./server.json')
+firebase_admin.initialize_app(cred)
 
 # Define globals
 # Shows should be a list of dictionaries with name, description, and queue keys
@@ -274,9 +279,9 @@ def on_message(mosq, obj, msg):
             request_string = str(msg.payload, 'utf-8')
             print(request_string)
             request_dict = json.loads(str(request_string).strip("'<>() ").replace('\'', '\"'))
-            print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
-        finally:
-            print(stack.currentLength())
+            auth_token = request_dict['user_token']
+            decoded_token = auth.verify_id_token(auth_token)
+            print(decoded_token, 'decoded user token')
             print(request_dict, 'request dictionary')
             print('options' in request_dict)
             if 'options' in request_dict:
