@@ -103,7 +103,7 @@ ShowOptions = {
                     'upperBound': 10,
                     'description': 'The number of nom_noms on the board at any given time. In practice, lower numbers are better to avoid quick games.'
                     },
-                'Number_of_caffeine_pills': { 
+                'Number_of_caffeine_pills': {
                     'type': 'Integer',
                     'lowerBound': 0,
                     'upperBound': 10,
@@ -131,7 +131,7 @@ ShowOptions = {
                     'default': 4,
                     'description': 'Same as Level_0_nom_nom but applies to nom_noms that are exactly 3 moves away from the head.'
                     },
-                'Display_on_lights_boolean':{ 
+                'Display_on_lights_boolean':{
                     'type': 'Boolean',
                     'default': True,
                     'lowerBound': False,
@@ -140,6 +140,8 @@ ShowOptions = {
                     }
                 }
         }
+whitelisted_emails = { 'nlbrow@umich.edu', 'cknebel@umich.edu' }
+
 def valid_option(user_input, option_info_dict, user_options):
     print(user_input, option_info_dict)
     print(type(user_input))
@@ -267,6 +269,17 @@ def getShowIndex(show):
     except:
         return -1
 
+def always_allowed_email(email):
+    if type(email) != type('test'):
+        return False
+    if not re.match(r"[^@]+@[^@]+\.[^@]+"):
+        #Invalid email!
+        return False
+    if email not in whitelisted_emails:
+        return False
+    else:
+        return True
+
 # Define event callbacks
 def on_connect(client, userdata, obj, rc):
     print ("on_connect:: Connected with result code "+ str ( rc ) )
@@ -281,25 +294,35 @@ def on_message(mosq, obj, msg):
             request_dict = json.loads(str(request_string).strip("'<>() ").replace('\'', '\"'))
             auth_token = request_dict['user_token']
             decoded_token = auth.verify_id_token(auth_token)
-            print(decoded_token, 'decoded user token')
-            print(request_dict, 'request dictionary')
-            print('options' in request_dict)
-            if 'options' in request_dict:
-                for option in request_dict['options']:
-                    if(option != 'no options'):
-                        try:
-                            request_dict['options'][option] = json.loads(request_dict['options'][option])
-                        except Exception as ex:
-                            print('error reading JSON from', request_dict['options'][option], ex)
-            request_name = request_dict['name']
-            if 'options' in request_dict:
-                if validOptions(request_dict):
-                    # stack.add(request_dict, request_name)
-                    print('valid options')
-                    print(request_dict, type(request_dict['options']))
-            else:
-                print('no options')
-                # stack.add(request_dict, request_name)
+            # After decoding the token, check the time and person.
+            print('\n \n', decoded_token['email'])
+            if decoded_token['email'] and not always_allowed_email(decoded_token['email']):
+                #if there is an email in the otken and it is not always allowed, check the time.
+                time = datetime.datime.now().time()
+                if time.hour < 9 or time.hour > 23:
+                    #do nothing
+                    print("Too Early")
+                    return
+                else:
+                    print(decoded_token, 'decoded user token')
+                    print(request_dict, 'request dictionary')
+                    print('options' in request_dict)
+                    if 'options' in request_dict:
+                        for option in request_dict['options']:
+                            if(option != 'no options'):
+                                try:
+                                    request_dict['options'][option] = json.loads(request_dict['options'][option])
+                                except Exception as ex:
+                                    print('error reading JSON from', request_dict['options'][option], ex)
+                    request_name = request_dict['name']
+                    if 'options' in request_dict:
+                        if validOptions(request_dict):
+                            # stack.add(request_dict, request_name)
+                            print('valid options')
+                            print(request_dict, type(request_dict['options']))
+                    else:
+                        print('no options')
+                        # stack.add(request_dict, request_name)
         except Exception as ex:
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
         finally:
@@ -346,7 +369,10 @@ while run:
     # client.publish( "/status", "ON" )
     time.sleep(2)
     # client.publish( "/status", "OFF")
-    if(stack.currentLength()):
-        # print(stack.currentLength())
-        acceptRequest(stack.getNext())
+    # if(stack.currentLength()):
+        # try:
+            # request_dict = json.loads(stack.getNext())
+            # acceptRequest(json.loads(stack.getNext()))
+        # except:
+            # print("Error in decoding request")
     time.sleep(2)
