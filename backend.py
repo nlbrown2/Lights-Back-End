@@ -1,4 +1,6 @@
-import paho.mqtt.client as mqtt , os, urllib.parse
+import paho.mqtt.client as mqtt 
+import urllib.parse
+import os
 import time
 import datetime
 import re
@@ -12,16 +14,16 @@ firebase_admin.initialize_app(cred)
 
 # Define globals
 # Shows should be a list of dictionaries with name, description, and queue keys
-ShowNames = ['Hue Show', 'Snake', 'Tic Tak Toe']
+ShowNames = ['Hue Show', 'Snake', 'Tic Tac Toe']
 LongShowDescriptions = {
         'Hue Show': 'This program has four parts that are customizable to run at different speeds. Part 1: simultaneous_hue_shift. All LEDs light at the same time to the same color. Color iterates through RGB spectrum. Part 2: serialized_hue_shift. Rather than all LEDs displaying the same color, each successive LED in the chain will display the next color in the spectrum. Each LED iterates through, making a rippling effect. Part 3: non_serialized_hue_shift. The LEDs change in successive order, so the colors still appear to move along the strand, but each successive color is random. Like the lights on the trim of a movie theater. Part 4: random_light_display. Each color and each placement of the color is random. Precursor to rave.py.',
         'Snake': 'This program plays the classic game of snake, but adds a few elements. The snake moves itself automatically around a grid. It looks for nom_noms which make it longer. There is a weighting system implemented to help the snake decide where to move based on the proximity of nom_noms. Though it can see nom_noms and navigate towards them, it cannot see bombs, which make it shorter. When a nom_nom or bomb is hit, the appropriate effect is applied and the item respawns somewhere else on the board. There are also caffeine pills which make the snake move faster, though this is only for visual effect. When a bomb, nom_nom, or caffeine pill is hit, the non-programmable lights will flash. If the snake gets caught in a loop, it will execute a random move to escape the loop. In text output, each node of the snake is numbered, with 1 being the head. 44 represents a bomb, 55 a caffeine pill, and 99 a nom_nom.',
-        'Tic Tak Toe': 'Long description for Tic Tak Toe'
+        'Tic Tac Toe': 'Long description for Tic Tac Toe'
         }
 ShortShowDescriptions = {
         'Hue Show': 'A visually stunning performance that demonstrates the capabilities of the lights. This program runs four sub-programs that ripple colors across the lights with varying degrees of order.',
         'Snake': 'This program plays the classic game of snake, but adds a few elements. The snake moves itself automatically around a grid. It actively looks for nom_noms which make it longer. It can hit hidden landmines that decrease its length. Caffeine pills will make it move rapidly.',
-        'Tic Tak Toe': 'Short descriptions for Tic Tak Toe.'
+        'Tic Tac Toe': 'Short descriptions for Tic Tac Toe.'
         }
 
 ShowOptions = {
@@ -145,8 +147,8 @@ ShowOptions = {
 whitelisted_emails = { 'nlbrow@umich.edu', 'cknebel@umich.edu' }
 
 def valid_option(user_input, option_info_dict, user_options):
-    print(user_input, option_info_dict)
-    print(type(user_input))
+    # print(user_input, option_info_dict)
+    # print(type(user_input))
     correct_type = option_info_dict['type']
     if correct_type == 'Float':
         try:
@@ -163,7 +165,7 @@ def valid_option(user_input, option_info_dict, user_options):
             print(e)
             return False
     if correct_type == 'Boolean':
-        print('Boolean', user_input, type(user_input))
+        # print('Boolean', user_input, type(user_input))
         if type(user_input) == type(True):
             return True
         if user_input != 'True' and user_input != 'False':
@@ -211,7 +213,7 @@ def withinBounds(userVal, option_info_dict, user_options):
         else:
             if userVal < option_info_dict['lowerBound']:
                 return False
-        print('within bounds')
+        # print('within bounds')
         return True
     except Exception as e:
         print('error checking bounds', e)
@@ -221,10 +223,10 @@ def validOptions(show_dict):
     valid_option_dict = ShowOptions[show_dict['name']]
     user_options = show_dict['options']
     for option in user_options:
-        print(option, type(option))
+        # print(option, type(option))
         if option in valid_option_dict:
-            print('found option', option)
-            print(valid_option_dict[option])
+            # print('found option', option)
+            # print(valid_option_dict[option])
             if not(valid_option(user_options[option], valid_option_dict[option], user_options)):
                 print('invalid option', option)
                 return False
@@ -251,18 +253,21 @@ def getLongShowDescription(showName):
     except:
         return 'no description'
 
+Shows = []
+for show in ShowNames:
+    showDict = {
+        'name': show,
+        'short_description': getShortShowDescription(show),
+        'long_description': getLongShowDescription(show),
+        'options': getShowOptions(show)
+        }
+    Shows.append(showDict)
+ShowsJSON = json.dumps(Shows)
+#print(ShowsJSON)
 def publishShows(mqtt):
-    Shows = []
-    for show in ShowNames:
-        showDict = {
-            'name': show,
-            'short_description': getShortShowDescription(show),
-            'long_description': getLongShowDescription(show),
-            'position': stack.getIndex(show),
-            'options': getShowOptions(show)
-            }
-        Shows.append(showDict)
-    mqtt.publish( "/options", json.dumps(Shows))
+    #print("Publish shows")
+    #print(type(ShowsJSON))
+    mqtt.publish( "/options", ShowsJSON)
 
 def getShowIndex(show):
     try:
@@ -274,92 +279,100 @@ def getShowIndex(show):
 def always_allowed_email(email):
     if type(email) != type('test'):
         return False
-    if not re.match(r"[^@]+@[^@]+\.[^@]+"):
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         #Invalid email!
         return False
     if email not in whitelisted_emails:
+        print("not a whitelist email")
         return False
     else:
+        print("returning true")
         return True
 
 # Define event callbacks
-def on_connect(client, userdata, obj, rc):
-    print ("on_connect:: Connected with result code "+ str ( rc ) )
+# def on_connect(client, userdata, obj, rc):
+#     x = 5
+    # print ("on_connect:: Connected with result code "+ str ( rc ) )
+
+def quiet_hours():
+	time = datetime.datetime.now().time()
+	print(time.hour > 23 or time.hour < 9)
+	return time.hour < 9 or time.hour > 23;
 
 def on_message(mosq, obj, msg):
-    print ("on_message:: this means  I got a message from broker for this topic")
-    print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
+    # print ("on_message:: this means  I got a message from broker for this topic")
+    # print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
     if(msg.topic == "/request"):
+        #print("got a request")
         try:
             request_string = str(msg.payload, 'utf-8')
-            print(request_string)
+            # print(request_string)
             request_dict = json.loads(str(request_string).strip("'<>() ").replace('\'', '\"'))
             auth_token = request_dict['user_token']
             decoded_token = auth.verify_id_token(auth_token)
             # After decoding the token, check the time and person.
-            print('\n \n', decoded_token['email'])
-            if decoded_token['email'] and not always_allowed_email(decoded_token['email']):
+            # print('\n \n', decoded_token['email'])
+            # print(always_allowed_email(decoded_token['email']))
+            
+            if decoded_token['email'] and (always_allowed_email(decoded_token['email']) or not quiet_hours()):
                 #if there is an email in the otken and it is not always allowed, check the time.
-                time = datetime.datime.now().time()
-                if time.hour < 9 or time.hour > 23:
-                    #do nothing
-                    print("Too Early")
-                    return
+                # print("\n \n \n")
+                # print(decoded_token, 'decoded user token')
+                # print(request_dict, 'request dictionary')
+                # print('options' in request_dict)
+                if 'options' in request_dict:
+                    for option in request_dict['options']:
+                        if(option != 'no options'):
+                            try:
+                                request_dict['options'][option] = json.loads(request_dict['options'][option])
+                            except Exception as ex:
+                                print('error reading JSON from', request_dict['options'][option], ex)
+                request_name = request_dict['name']
+                if 'options' in request_dict:
+                    if validOptions(request_dict):
+                        stack.add(request_string, request_name)
+                        # print('valid options')
+                        # print(request_dict, type(request_dict['options']))
                 else:
-                    print(decoded_token, 'decoded user token')
-                    print(request_dict, 'request dictionary')
-                    print('options' in request_dict)
-                    if 'options' in request_dict:
-                        for option in request_dict['options']:
-                            if(option != 'no options'):
-                                try:
-                                    request_dict['options'][option] = json.loads(request_dict['options'][option])
-                                except Exception as ex:
-                                    print('error reading JSON from', request_dict['options'][option], ex)
-                    request_name = request_dict['name']
-                    if 'options' in request_dict:
-                        if validOptions(request_dict):
-                            # stack.add(request_dict, request_name)
-                            print('valid options')
-                            print(request_dict, type(request_dict['options']))
-                    else:
-                        print('no options')
-                        # stack.add(request_dict, request_name)
+                    # print('no options')
+                    stack.add(request_string, request_name)
         except Exception as ex:
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
-        finally:
-            print(request_dict)
     if(msg.topic == "/get"):
-        if(str(msg.payload == "show list")):
+        #print(str(msg.payload, 'utf-8') == 'show list')
+        if(str(msg.payload, 'utf-8') == "show list"):
+            #print("Publishing show")
             publishShows(mosq)
 
-def on_publish(mosq, obj, mid):
-    print ("published")
+# def on_publish(mosq, obj, mid):
+#     x = 5
+    # print ("published")
 
-def on_subscribe(mosq, obj, mid, granted_qos):
-    print("Subscribed: " + str(mid) + " " + str(granted_qos))
+#def on_subscribe(mosq, obj, mid, granted_qos):
+#    x = 5
+    # print("Subscribed: " + str(mid) + " " + str(granted_qos))
 
-def on_log(mosq, obj, level, string):
-    print(string)
+#def on_log(mosq, obj, level, string):
+#    x = 5
+    # print(string)
 
 
 client = mqtt.Client(clean_session=True)
 # Assign event callbacks
 client.on_message = on_message
-client.on_connect = on_connect
-client.on_publish = on_publish
-client.on_subscribe = on_subscribe
+#client.on_connect = on_connect
+# client.on_publish = on_publish
+#client.on_subscribe = on_subscribe
 
 # Uncomment to enable debug messages
-client.on_log = on_log
+#client.on_log = on_log
 
 
 # user name has to be called before connect
 client.username_pw_set("Rpi", "cRxSyAsZwUd8")
 # Uncomment in PROD
-# client.tls_set('/etc/ssl/certs/ca-certificates.crt')
-
-client.connect('m12.cloudmqtt.com', 10048, 60)
+client.tls_set('/etc/ssl/certs/ca-certificates.crt')
+client.connect('m12.cloudmqtt.com', 20048)
 client.loop_start()
 #This puts the client's publish and subscribe into a different thread, so any blocking work done here won't matter
 
@@ -368,13 +381,12 @@ client.subscribe("/get", 2)
 run = True
 stack = RequestStack()
 while run:
-    # client.publish( "/status", "ON" )
     time.sleep(2)
-    # client.publish( "/status", "OFF")
-    # if(stack.currentLength()):
-        # try:
-            # request_dict = json.loads(stack.getNext())
-            # acceptRequest(json.loads(stack.getNext()))
-        # except:
-            # print("Error in decoding request")
+    # print(stack.currentLength())
+    if(stack.currentLength()):
+        try:
+            request_dict = stack.getNextRequest()
+            acceptRequest(request_dict)
+        except:
+            print("Error in decoding request", e)
     time.sleep(2)
