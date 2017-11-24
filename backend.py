@@ -267,6 +267,11 @@ ShowsJSON = json.dumps(Shows)
 def publishShows(mqtt):
     #print("Publish shows")
     #print(type(ShowsJSON))
+    for showDict in Shows:
+        # print(stack.getIndex(showDict['name']))
+        showDict['position'] = stack.getIndex(showDict['name'])
+        # showDict.update({'position', stack.getIndex(showDict['name'])})
+    ShowsJSON = json.dumps(Shows)
     mqtt.publish( "/options", ShowsJSON)
 
 def getShowIndex(show):
@@ -336,6 +341,7 @@ def on_message(mosq, obj, msg):
                 else:
                     # print('no options')
                     stack.add(request_string, request_name)
+            publishShows(mosq)
         except Exception as ex:
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
     if(msg.topic == "/get"):
@@ -371,8 +377,8 @@ client.on_message = on_message
 # user name has to be called before connect
 client.username_pw_set("Rpi", "cRxSyAsZwUd8")
 # Uncomment in PROD
-client.tls_set('/etc/ssl/certs/ca-certificates.crt')
-client.connect('m12.cloudmqtt.com', 20048)
+# client.tls_set('/etc/ssl/certs/ca-certificates.crt')
+client.connect('m12.cloudmqtt.com', 10048)
 client.loop_start()
 #This puts the client's publish and subscribe into a different thread, so any blocking work done here won't matter
 
@@ -386,6 +392,7 @@ while run:
     if(stack.currentLength()):
         try:
             request_dict = stack.getNextRequest()
+            publishShows(client)
             acceptRequest(request_dict)
         except:
             print("Error in decoding request", e)
