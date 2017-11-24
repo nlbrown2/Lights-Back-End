@@ -2,7 +2,7 @@ from collections import deque
 from time import sleep
 import os
 import json
-from startShow import startShow
+#from startShow import startShow
 
 def acceptRequest(request):
     #requests are JSON dictionaries
@@ -17,8 +17,8 @@ def acceptRequest(request):
         # fout.write(request)
         # sleep(1)
 	#Try something from os to spawn a new process with a much lower nice value and see how that goes
-        # print('nice --20 /home/pi/Chris_Code_Repo/Lights-Back-End/Chris_Code_Database/env/bin/python call_show.py ' + json.dumps(request))
-        os.system('sudo nice --20 /home/pi/Chris_Code_Repo/Lights-Back-End/Chris_Code_Database/env/bin/python call_show.py ' + json.dumps(request))
+        print('nice --20 /home/pi/Chris_Code_Repo/Lights-Back-End/Chris_Code_Database/env/bin/python call_show.py ' + json.dumps(request))
+        # os.system('sudo nice --20 /home/pi/Chris_Code_Repo/Lights-Back-End/Chris_Code_Database/env/bin/python call_show.py ' + json.dumps(request))
 	#Want to use subprocess.Popen so I can grab the PID from it and determine if it is still running or not
 	#p = subprocess.Poen(*whatever args are needed*)
 	#p.poll() should determine if it is still open or not
