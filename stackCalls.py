@@ -52,9 +52,19 @@ class RequestStack:
 
     def getIndex(self, show):
         try:
-            return self.show_names.index(show)
-        except:
+            for i, name in enumerate(self.show_names):
+              if show == name:
+                return i
+            return -1
+        except Exception as ex:
+            print("Error getting index for " + show + " ", ex)
             return -1
 
     def currentLength(self):
         return len(self.stack)
+
+    def print_all(self):
+        for x in self.stack:
+          print(x)
+        for x in self.show_names:
+          print(x)
