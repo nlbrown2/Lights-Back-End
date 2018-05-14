@@ -7,6 +7,7 @@ import re
 from stackCalls import RequestStack, acceptRequest
 import json
 import firebase_admin
+import subprocess
 from firebase_admin import credentials, auth
 
 cred = credentials.Certificate('./server.json')
@@ -225,7 +226,7 @@ ShowOptions = {
                         'description': 'The orientation of the board for the clock! Horizontal has a timer :) .'
                         },
                     'timer_value':{
-                        'type': 'Double',
+                        'type': 'Float',
                         'default': 0,
                         'lowerBound': 0,
                         'upperBound': 99,
@@ -434,6 +435,10 @@ ShowOptions = {
                     }
         }
 whitelisted_emails = { 'nlbrow@umich.edu', 'cknebel@umich.edu' }
+
+infinite_shows = { 'Clock', 'Text Scroller', 'Big Text Scroller' }
+
+debugging_shows = { 'Clear' }
 
 def valid_option(user_input, option_info_dict, user_options, show_name):
     # print(user_input, option_info_dict)
@@ -665,12 +670,12 @@ def on_message(mosq, obj, msg):
                 request_name = request_dict['name']
                 if 'options' in request_dict:
                     if validOptions(request_dict):
-                        stack.add(request_string, request_name)
+                        stack.add(request_dict, request_name)
                         # print('valid options')
                         # print(request_dict, type(request_dict['options']))
                 else:
-                    # print('no options')
-                    stack.add(request_string, request_name)
+                    print('no options')
+                    stack.add(request_dict, request_name)
             publishShows(mosq)
         except Exception as ex:
             print("ERROR: could not add ", str(msg.payload), " to the stack", ex)
@@ -721,9 +726,48 @@ while run:
     # print(stack.currentLength())
     if(stack.currentLength()):
         try:
+            print("pos 1")
             request_dict = stack.getNextRequest()
+            request_name = request_dict['name']
+            print("request_name: ", request_name)
             publishShows(client)
-            acceptRequest(request_dict)
-        except:
+            print("pos 3")
+            proc = acceptRequest(request_dict)
+            print("pos 4")
+            print("Proc is: ")
+            print(proc)
+            time.sleep(60) #run for at least a minute
+            print("current length is: ")
+            print(stack.currentLength())
+            while(stack.currentLength() == 0): #while there is nothing in the queue, do nothing
+                time.sleep(2)
+            print("poll: ", proc.poll())
+            if(proc):
+                print("Process evals to true")
+                try:
+                    if( request_name in infinite_shows ):
+                        print("setting infinite to true")
+                        infinite = True
+                    else:
+                        print("setting infinite to false")
+                        infinite = False
+                    print("done")
+                except Exception as e:
+                    print( e )
+                print("Show ", request_name, " infinite: ", infinite)
+                if( infinite ):
+                    try:
+                        request_dict['loop_count']
+                        infinite = False
+                    except:
+                        infinite = True
+                    print("infinite: ", infinite )
+                    if( infinite ):
+                        proc.kill() #after a minute & new show in the queue, kill the show
+                    else:
+                        proc.wait()
+                else:
+                    proc.wait()
+        except Exception as e:
             print("Error in decoding request", e)
     time.sleep(2)
